@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block content %}
+<script type="text/javascript">
+$( document ).ready( function() {
+	var windowSize = 0;
+    var trace1 = {
+        x: [],
+        y: [],
+        mode: 'lines',
+		line: {width: 1}
+    }
+    var data = [ trace1 ];
+    var layout = {
+        //hovermode:'closest',
+        title: "Hydrophobicity Window Analysis",
+        xaxis: {
+            title: "Protein Sequence Window",
+			autorange: true
+        },
+        yaxis: {
+            title: "Hydrophobicity",
+			autorange: true
+        },
+		width: window.innerWidth
+    }
+
+    Plotly.newPlot('plotDiv', data, layout); //create plot
+
+    $("#submit").click(function(e) {
+        e.preventDefault();
+        var protein_seq = $("#protein_seq").val();
+
+		//if empty, fill with a default aa seq
+		if (protein_seq == ""){
+			protein_seq = "KHNSNRQLERSGRFGGNPGGFGNQGGFGNSRGGG"
+							+ "AGLGNNQGSNMGGGMNFGAFSINPAMMAAAQAA"
+							+ "LQSSWGMMGMLASQQNQSGPSGNNQNQGNMQRE"
+							+ "PNQAFGSGNNSYSGSNSGAAIGWGSASNAGSGS"
+							+ "GFNGGFGSSMDSKSSGWGM"
+		};
+
+		//checks if aa sequence is good
+		var aminoacid_check = /^[a,r,n,d,c,q,e,g,h,i,l,k,m,f,p,s,t,w,y,v]+$/i;
+		if (aminoacid_check.test(protein_seq) != true){
+			amino_acid_error();
+			return false;
+		}
+
+        windowSize = $("#windowSize").val();
+
+		$("#result").removeClass("invisible");
+        console.log(protein_seq, windowSize);
+        $.ajax({
+            url: "/analysis/submit",
+            type: 'POST',
+            data: JSON.stringify({protein_seq: protein_seq, windowSize: windowSize}), 
+            success: function(data) {
+                console.log(data.x_data, data.y_data);
+                $("#sequence").text(data.protein_seq);
+                displayResult(data.x_data, data.y_data); 
+            },
+			error: function(err, status) {console.log(err);},
+            //processData: false,
+   			contentType: 'application/json;charset=UTF-8'
+            //contentType: false
+        });
+    });
+
+	function amino_acid_error(){
+		alert("Not a valid amino acid sequence.");
+	}
+
+	window.onresize = function() {
+    	Plotly.Plots.resize('plotDiv');
+	};
+
+	$("#publish").click(function(){
+	// Exports plot as a .svg file for easy downloading and saving
+	// Takes plotHeight and plotWidth as parameters
+		var d3 = Plotly.d3;
+		var img_jpg = d3.select('#jpg-export');
+		var plotDiv = document.getElementById('plotDiv');
+		var plotWidth = parseInt($("#width").val());
+		var plotHeight = parseInt($("#height").val());
+		console.log(plotWidth, plotHeight);
+		var img = Plotly.toImage(plotDiv,{format:'svg',height:plotHeight,width:plotWidth})
+			.then(
+			function(url)
+				{
+					img_jpg.attr("src", url);
+					$("#image-export").removeClass("invisible");	
+				}
+			)
+	});
+		
+
+	var windowSize = 0;
+    var trace1 = {
+        x: [],
+        y: [],
+        mode: 'lines',
+		line: {width: 1.5}
+    }
+    var data = [ trace1 ];
+    var layout = {
+        //hovermode:'closest',
+        title: "Hydrophobicity Window Analysis",
+        xaxis: {
+            title: "Protein Sequence Window",
+			autorange: true
+        },
+        yaxis: {
+            title: "Hydrophobicity",
+			autorange: true
+        }
+    }
+
+    function displayResult(x_vals, y_vals) {
+		var titleStr = $("#title").val();
+
+        $(".result_wrapper").fadeIn(100); //fade in result_wrapper to display results
+        $("#plotDiv").fadeIn(100); //fade in result_wrapper to display results
+
+
+		//Plotly.deleteTraces('plotDiv', 0);
+		var x_max =(Math.max(...x_vals)); //get max x value
+		var y_max = (Math.max(...y_vals)); //get max y value
+		y_max += y_max*0.05 //5% buffer
+		var y_min = (Math.min(...y_vals)); //get min y value
+		y_min -= y_min*0.05 //5% buffer
+		console.log(y_min);
+		Plotly.animate('plotDiv', {
+			data:[{x: x_vals, y: y_vals}],
+			traces: [0],
+			layout: {
+            	//hovermode:"x",
+            	title: titleStr,
+            	xaxis: {
+					range: [0, x_max],
+                	title: "Protein Sequence Window"
+            			},
+            	yaxis: {
+					range: [y_min, y_max],
+                	title: "Hydrophobicity"
+            			}
+				}
+			}, {
+			transition: {
+				duration: 500,
+				easing: 'cubic-in-out'
+			}
+		}
+		);
+        //Plotly.addTraces('plotDiv', trace1);
+		
+
+    };
+
+    var plotDiv = document.getElementById('plotDiv');
+    plotDiv.on('plotly_hover', function(data){
+		var window_num = data.points[0].x;
+        console.log(windowSize);
+		//console.log(data, data.points[0].x, data.points[0].y, windowSize);
+		highlight(window_num, window_num + parseInt(windowSize)-1);
+    });
+	
+	function highlight(start, end) { 
+		var str = $("#sequence").text();
+		console.log(str);
+		str = str.substr(0, start) +
+			'<span class="hilite">' + 
+			str.substr(start, end - start + 1) +
+			'</span>' +
+			str.substr(end + 1);
+		console.log(str);
+		$("#sequence").html(str);
+	}
+	$("#highlight").click(function(e){
+		e.preventDefault();
+		highlight(10,15);
+		console.log("Highlight!");
+	});
+});
+</script>
+
+<h1>Hydrophobicity Analysis</h1>
+	Title: <i>(optional)</i> <input placeholder="e.g. TDP43 Hydrophobicity" style="min-width: 500px;" type="text" class="form-control" id="title" />
+    Protein Seq: <textarea placeholder="e.g. KHNSNRQLERSGRFGGNPGGFGNQGGFGNSRGGG..." class="form-control" id="protein_seq" style="resize: both; min-width: 500px; height: 100px;"></textarea>
+    Window Size: 
+	<div style="margin-top: 5px;"><input class="dimensions form-control" value=5 id="windowSize" type=number />
+	<button id="submit" style="vertical-align: inherit"class="btn btn-info">Submit</button>
+	</div>
+	<br>
+
+	<div id="result" class="invisible">
+		<div id="plotDiv"></div>
+		<div>
+			Protein Sequence:
+			<p id="sequence" class="form-control" style="word-wrap: break-word;"></p>
+		</div>
+		<button id="publish" class="btn btn-info">
+		<i class="fa fa-camera"></i> Generate Plot Image</button><br>
+		Dimensions:<br>
+		<input placeholder="Width (px)" class="dimensions form-control" value=800 type="number" id="width" />x<input placeholder="Height (px)" class="dimensions form-control" value=500 type="number" id="height">
+		<div id="image-export" class="invisible">
+		Exported image:
+		<img class="form-control" id="jpg-export"></img>
+		<i style="float: right;">Right-click to save</i>
+		</div>
+	</div>
+
+{% endblock %}
