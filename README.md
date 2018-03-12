@@ -3,7 +3,8 @@ A window-analysis protein hydrophobicity webapp.
 
 ### Dependencies:
 ```python3, python3-flask```
-Flask can be installed using ```pip3 install flask```
+
+(Flask can be installed using ```pip3 install flask```)
 
 ### Instructions:
 Run with ```python3 controller.py```
