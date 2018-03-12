@@ -10,7 +10,6 @@ import time
 import window_analysis
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route('/analysis/submit', methods=['POST'])
 def analysis_submit():
