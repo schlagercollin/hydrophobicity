@@ -7,4 +7,3 @@ A window-analysis protein hydrophobicity webapp.
 ### Instructions:
 Run with ```python3 controller.py```
 Then go to web browser and enter ```localhost:5000```.
-
