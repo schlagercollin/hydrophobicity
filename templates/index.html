@@ -54,11 +54,11 @@ $( document ).ready( function() {
         $.ajax({
             url: "/analysis/submit",
             type: 'POST',
-            data: JSON.stringify({protein_seq: protein_seq, windowSize: windowSize}), 
+            data: JSON.stringify({protein_seq: protein_seq, windowSize: windowSize}),
             success: function(data) {
                 console.log(data.x_data, data.y_data);
                 $("#sequence").text(data.protein_seq);
-                displayResult(data.x_data, data.y_data); 
+                displayResult(data.x_data, data.y_data);
             },
 			error: function(err, status) {console.log(err);},
             //processData: false,
@@ -94,11 +94,11 @@ $( document ).ready( function() {
 			function(url)
 				{
 					img_jpg.attr("src", url);
-					$("#image-export").removeClass("invisible");	
+					$("#image-export").removeClass("invisible");
 				}
 			)
 	});
-		
+
 
 	var windowSize = 0;
     var trace1 = {
@@ -121,14 +121,20 @@ $( document ).ready( function() {
         }
     }
 
-    function displayResult(x_vals, y_vals) {
+    var x_vals = [];
+    var y_vals =[];
+
+    function displayResult(x_values, y_values) {
+        x_vals = x_values;
+        y_vals = y_values;
+
 		var titleStr = $("#title").val();
 
         $(".result_wrapper").fadeIn(100); //fade in result_wrapper to display results
         $("#plotDiv").fadeIn(100); //fade in result_wrapper to display results
 
 
-		Plotly.deleteTraces('plotDiv', 0);
+		//Plotly.deleteTraces('plotDiv', 0);
         var trace1 = {
             x: [],
             y: [],
@@ -136,7 +142,7 @@ $( document ).ready( function() {
             mode: 'lines',
             line: {width: 1},
         }
-        Plotly.addTraces('plotDiv', trace1);
+        //Plotly.addTraces('plotDiv', trace1);
 		var x_max =(Math.max(...x_vals)); //get max x value
 		var y_max = (Math.max(...y_vals)); //get max y value
 		y_max += y_max*0.05 //5% buffer
@@ -164,14 +170,21 @@ $( document ).ready( function() {
 			}
 		}
 		);
-
-        var mutations = [20, 30];
+		var mutations_str = $("#mutations_box").val();
+		var mutations = mutations_str.split(",");
+    };
+    function plot_mutations(mutations) {
+        console.log(plotDiv.data);
+        if (plotDiv.data.length > 1){
+            plotDiv.data = [plotDiv.data[0]];
+        };
         for (var i=0; i < mutations.length; i++){
         var mutations_xvals = [];
         var mutations_yvals = [];
             for (var j=-1*(windowSize-1); j <= (windowSize-1); j++){
-                mutations_xvals.push(x_vals[mutations[i]+j]);
-                mutations_yvals.push(y_vals[mutations[i]+j]);
+                mutations_xvals.push(x_vals[parseInt(mutations[i])+j]);
+                mutations_yvals.push(y_vals[parseInt(mutations[i])+j]);
+            };
             var mutations_trace = {
                 x: mutations_xvals,
                 y: mutations_yvals,
@@ -179,10 +192,16 @@ $( document ).ready( function() {
                 mode: 'lines',
                 line: {width: 3, color: "#ff0000"},
             };
-            };
-            //Plotly.addTraces('plotDiv', mutations_trace);
+            Plotly.addTraces('plotDiv', mutations_trace);
         };
     };
+		var global_mutations = []
+    $("#plot_mutations").click(function() {
+        var mutations_str = $("#mutations_box").val();
+        var mutations = mutations_str.split(",");
+				global_mutations = mutations;
+				plot_mutations(mutations);
+    });
 
     var plotDiv = document.getElementById('plotDiv');
     plotDiv.on('plotly_hover', function(data){
@@ -191,27 +210,35 @@ $( document ).ready( function() {
 		//console.log(data, data.points[0].x, data.points[0].y, windowSize);
 		highlight(window_num, window_num + parseInt(windowSize)-1);
     });
-	
-	function highlight(start, end) { 
+
+	function highlight(start, end) {
 		var str = $("#sequence").text();
         var color = '#007aff';
 		str = str.substr(0, start) +
-			'<span style="color:'+color+'" class="hilite">' + 
+			'<span style="color:'+color+'" class="hilite">' +
 			str.substr(start, end - start + 1) +
 			'</span>' +
 			str.substr(end + 1);
         $("#sequence").html(str);
+		highlight_mutations();
 	}
+
+	function highlight_mutations(){
+		
+	}
+
 });
 </script>
 
 <h1>Hydrophobicity Analysis</h1>
 	Title: <i>(optional)</i> <input placeholder="e.g. TDP43 Hydrophobicity" style="min-width: 500px;" type="text" class="form-control" id="title" />
     Protein Seq: <textarea placeholder="e.g. KHNSNRQLERSGRFGGNPGGFGNQGGFGNSRGGG..." class="form-control" id="protein_seq" style="resize: both; min-width: 500px; height: 100px;"></textarea>
-    Window Size: 
+    <textarea class="form-control" id="mutations_box"></textarea>
+    Window Size:
 	<div style="margin-top: 5px;"><input class="dimensions form-control" value=5 id="windowSize" type=number />
 	<button id="submit" style="vertical-align: inherit"class="btn btn-info">Submit</button>
-	</div>
+	<button id="plot_mutations" class="btn btn-info">Plot Mutations</button>
+    </div>
 	<br>
 
 	<div id="result" class="invisible">
