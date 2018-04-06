@@ -6,8 +6,9 @@ $( document ).ready( function() {
     var trace1 = {
         x: [],
         y: [],
+        name: 'Sequence',
         mode: 'lines',
-		line: {width: 1}
+		line: {width: 1},
     }
     var data = [ trace1 ];
     var layout = {
@@ -66,6 +67,11 @@ $( document ).ready( function() {
         });
     });
 
+    $(".aa-element").click(function(){
+        console.log("Clicked!");
+        console.log($(this).val());
+    });
+
 	function amino_acid_error(){
 		alert("Not a valid amino acid sequence.");
 	}
@@ -122,14 +128,21 @@ $( document ).ready( function() {
         $("#plotDiv").fadeIn(100); //fade in result_wrapper to display results
 
 
-		//Plotly.deleteTraces('plotDiv', 0);
+		Plotly.deleteTraces('plotDiv', 0);
+        var trace1 = {
+            x: [],
+            y: [],
+            name: 'Sequence',
+            mode: 'lines',
+            line: {width: 1},
+        }
+        Plotly.addTraces('plotDiv', trace1);
 		var x_max =(Math.max(...x_vals)); //get max x value
 		var y_max = (Math.max(...y_vals)); //get max y value
 		y_max += y_max*0.05 //5% buffer
 		var y_min = (Math.min(...y_vals)); //get min y value
 		y_min -= y_min*0.05 //5% buffer
-		console.log(y_min);
-		Plotly.animate('plotDiv', {
+        Plotly.animate('plotDiv', {
 			data:[{x: x_vals, y: y_vals}],
 			traces: [0],
 			layout: {
@@ -151,35 +164,44 @@ $( document ).ready( function() {
 			}
 		}
 		);
-        //Plotly.addTraces('plotDiv', trace1);
-		
 
+        var mutations = [20, 30];
+        for (var i=0; i < mutations.length; i++){
+        var mutations_xvals = [];
+        var mutations_yvals = [];
+            for (var j=-1*(windowSize-1); j <= (windowSize-1); j++){
+                mutations_xvals.push(x_vals[mutations[i]+j]);
+                mutations_yvals.push(y_vals[mutations[i]+j]);
+            var mutations_trace = {
+                x: mutations_xvals,
+                y: mutations_yvals,
+                name: mutations[i],
+                mode: 'lines',
+                line: {width: 3, color: "#ff0000"},
+            };
+            };
+            //Plotly.addTraces('plotDiv', mutations_trace);
+        };
     };
 
     var plotDiv = document.getElementById('plotDiv');
     plotDiv.on('plotly_hover', function(data){
 		var window_num = data.points[0].x;
-        console.log(windowSize);
+        //console.log(windowSize);
 		//console.log(data, data.points[0].x, data.points[0].y, windowSize);
 		highlight(window_num, window_num + parseInt(windowSize)-1);
     });
 	
 	function highlight(start, end) { 
 		var str = $("#sequence").text();
-		console.log(str);
+        var color = '#007aff';
 		str = str.substr(0, start) +
-			'<span class="hilite">' + 
+			'<span style="color:'+color+'" class="hilite">' + 
 			str.substr(start, end - start + 1) +
 			'</span>' +
 			str.substr(end + 1);
-		console.log(str);
-		$("#sequence").html(str);
+        $("#sequence").html(str);
 	}
-	$("#highlight").click(function(e){
-		e.preventDefault();
-		highlight(10,15);
-		console.log("Highlight!");
-	});
 });
 </script>
 
@@ -196,7 +218,7 @@ $( document ).ready( function() {
 		<div id="plotDiv"></div>
 		<div>
 			Protein Sequence:
-			<p id="sequence" class="form-control" style="word-wrap: break-word;"></p>
+			<div id="sequence" class="form-control" style="word-wrap: break-word;"></div>
 		</div>
 		<button id="publish" class="btn btn-info">
 		<i class="fa fa-camera"></i> Generate Plot Image</button><br>
