@@ -15,7 +15,7 @@ $( document ).ready( function() {
         //hovermode:'closest',
         title: "Hydrophobicity Window Analysis",
         xaxis: {
-            title: "Protein Sequence Window",
+            title: "Disordered Sequence Window",
 			autorange: true
         },
         yaxis: {
@@ -27,45 +27,72 @@ $( document ).ready( function() {
 
     Plotly.newPlot('plotDiv', data, layout); //create plot
 
+		var sequence_toggles = [];
+		function create_sequence_dict(sequence){
+				sequence_toggles = [];
+				for (var i=0; i < sequence.length; i++){
+						sequence_toggles.push({"value":sequence[i], "color":"black"});
+				}
+				console.log(sequence_toggles);
+		};
+
     $("#submit").click(function(e) {
         e.preventDefault();
         var protein_seq = $("#protein_seq").val();
 
-		//if empty, fill with a default aa seq
-		if (protein_seq == ""){
-			protein_seq = "KHNSNRQLERSGRFGGNPGGFGNQGGFGNSRGGG"
-							+ "AGLGNNQGSNMGGGMNFGAFSINPAMMAAAQAA"
-							+ "LQSSWGMMGMLASQQNQSGPSGNNQNQGNMQRE"
-							+ "PNQAFGSGNNSYSGSNSGAAIGWGSASNAGSGS"
-							+ "GFNGGFGSSMDSKSSGWGM"
-		};
+				//if empty, fill with a default aa seq
+				if (protein_seq == ""){
+					protein_seq = "KHNSNRQLERSGRFGGNPGGFGNQGGFGNSRGGG"
+									+ "AGLGNNQGSNMGGGMNFGAFSINPAMMAAAQAA"
+									+ "LQSSWGMMGMLASQQNQSGPSGNNQNQGNMQRE"
+									+ "PNQAFGSGNNSYSGSNSGAAIGWGSASNAGSGS"
+									+ "GFNGGFGSSMDSKSSGWGM"
+				};
 
-		//checks if aa sequence is good
-		var aminoacid_check = /^[a,r,n,d,c,q,e,g,h,i,l,k,m,f,p,s,t,w,y,v]+$/i;
-		if (aminoacid_check.test(protein_seq) != true){
-			amino_acid_error();
-			return false;
-		}
+				//checks if aa sequence is good
+				var aminoacid_check = /^[a,r,n,d,c,q,e,g,h,i,l,k,m,f,p,s,t,w,y,v]+$/i;
+				if (aminoacid_check.test(protein_seq) != true){
+					amino_acid_error();
+					return false;
+				}
 
-        windowSize = $("#windowSize").val();
+		        windowSize = $("#windowSize").val();
 
-		$("#result").removeClass("invisible");
-        console.log(protein_seq, windowSize);
-        $.ajax({
-            url: "/analysis/submit",
-            type: 'POST',
-            data: JSON.stringify({protein_seq: protein_seq, windowSize: windowSize}),
-            success: function(data) {
-                console.log(data.x_data, data.y_data);
-                $("#sequence").text(data.protein_seq);
-                displayResult(data.x_data, data.y_data);
-            },
-			error: function(err, status) {console.log(err);},
-            //processData: false,
-   			contentType: 'application/json;charset=UTF-8'
-            //contentType: false
-        });
+
+				$("#result").removeClass("invisible");
+		        console.log(protein_seq, windowSize);
+		        $.ajax({
+		            url: "/analysis/submit",
+		            type: 'POST',
+		            data: JSON.stringify({protein_seq: protein_seq, windowSize: windowSize}),
+		            success: function(data) {
+		                console.log(data.x_data, data.y_data);
+		                //$("#sequence").text(data.protein_seq);
+										create_sequence_dict(data.protein_seq);
+										populate_sequence_text();
+		                displayResult(data.x_data, data.y_data);
+		            },
+					error: function(err, status) {console.log(err);},
+		            //processData: false,
+		   			contentType: 'application/json;charset=UTF-8'
+		            //contentType: false
+		        });
     });
+
+		function populate_sequence_text(){
+			var str = "";
+			console.log(sequence_toggles);
+			for (var item in sequence_toggles){
+				if (sequence_toggles[item]['color'] != "black"){
+					str += "<span class='hilite' style='color: "+sequence_toggles[item]['color']+"'>"
+									+ sequence_toggles[item]["value"]
+									+ "</span>"
+				} else {
+					str += sequence_toggles[item]["value"];
+				}
+			}
+			$("#sequence").html(str);
+		}
 
     $(".aa-element").click(function(){
         console.log("Clicked!");
@@ -200,6 +227,8 @@ $( document ).ready( function() {
         var mutations_str = $("#mutations_box").val();
         var mutations = mutations_str.split(",");
 				global_mutations = mutations;
+				color_mutations();
+				populate_sequence_text();
 				plot_mutations(mutations);
     });
 
@@ -211,28 +240,33 @@ $( document ).ready( function() {
 		highlight(window_num, window_num + parseInt(windowSize)-1);
     });
 
-	function highlight(start, end) {
-		var str = $("#sequence").text();
-        var color = '#007aff';
-		str = str.substr(0, start) +
-			'<span style="color:'+color+'" class="hilite">' +
-			str.substr(start, end - start + 1) +
-			'</span>' +
-			str.substr(end + 1);
-        $("#sequence").html(str);
-		highlight_mutations();
-	}
+	function unhighlight() {
+		for (item in sequence_toggles){
+			sequence_toggles[item]["color"] = "black";
+		};
+	};
 
-	function highlight_mutations(){
-		
-	}
+	function color_mutations(){
+		for (i in global_mutations){
+			sequence_toggles[global_mutations[parseInt(i)]]["color"] = "red";
+		};
+	};
+
+	function highlight(start, end) {
+		unhighlight();
+		for (var i = start; i < end; i++) {
+			sequence_toggles[i]["color"] = '#007aff'
+		};
+		color_mutations();
+		populate_sequence_text()
+	};
 
 });
 </script>
 
 <h1>Hydrophobicity Analysis</h1>
 	Title: <i>(optional)</i> <input placeholder="e.g. TDP43 Hydrophobicity" style="min-width: 500px;" type="text" class="form-control" id="title" />
-    Protein Seq: <textarea placeholder="e.g. KHNSNRQLERSGRFGGNPGGFGNQGGFGNSRGGG..." class="form-control" id="protein_seq" style="resize: both; min-width: 500px; height: 100px;"></textarea>
+    Disordered Seq: <textarea placeholder="e.g. KHNSNRQLERSGRFGGNPGGFGNQGGFGNSRGGG..." class="form-control" id="protein_seq" style="resize: both; min-width: 500px; height: 100px;"></textarea>
     <textarea class="form-control" id="mutations_box"></textarea>
     Window Size:
 	<div style="margin-top: 5px;"><input class="dimensions form-control" value=5 id="windowSize" type=number />
@@ -244,7 +278,7 @@ $( document ).ready( function() {
 	<div id="result" class="invisible">
 		<div id="plotDiv"></div>
 		<div>
-			Protein Sequence:
+			Protein Disordered Sequence:
 			<div id="sequence" class="form-control" style="word-wrap: break-word;"></div>
 		</div>
 		<button id="publish" class="btn btn-info">
